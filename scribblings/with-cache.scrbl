@@ -234,3 +234,41 @@ The @racket[with-cache] function implements this pipeline and provides hooks for
   Logs @racket['info] events when reading or writing caches and @racket['error] events after detecting corrupted cache files.
 }
 
+@section{Using Typed Racket}
+
+Using the @tt{with-cache} library with Typed Racket requires providing types for several functions. While these are mostly
+straightforward, indiscriminate use of the @racket[Any] type can lead to some tricky errors. In particular, it's important
+that Typed Racket knows which things are thunks, to ensure that they can safely be called on the @racket[with-cache] side.
+
+Here's a small example that works correctly:
+
+@codeblock|{
+#lang typed/racket
+
+(require/typed with-cache
+               [with-cache (Path-String (-> Any) -> Any)]
+               [cachefile (Path-String -> Path-String)]
+               [*current-cache-keys* ((Listof (-> Any)) -> Void)])
+
+(define-type TestType (Immutable-HashTable Symbol Natural))
+(define-predicate test-type? TestType)
+
+(*current-cache-keys*
+ ;; cache is invalidated every second, for demonstration purposes:
+ (list (λ () (current-seconds))))
+
+(define (compute-complex-value) : TestType
+  ;; imagine that this is hard to compute:
+  (hash 'a 1234))
+
+(define cached : TestType
+  (assert
+   (with-cache (cachefile "complex-value-cache")
+     (λ ()
+       (printf "refreshing cache\n")
+       (compute-complex-value)))
+   test-type?))
+
+cached
+}|
+
