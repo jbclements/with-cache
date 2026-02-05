@@ -272,3 +272,23 @@ Here's a small example that works correctly:
 cached
 }|
 
+Another amusing way to get into trouble with Typed Racket and with-cache is
+importing the @racket[with-cache] function using a parameterized type, as in
+
+@code|{
+#lang typed/racket
+
+
+(require/typed with-cache
+               ;; this does not work!
+               [with-cache (All (T) (Path-String (-> T) -> T))]
+               ...)
+
+...
+}|
+
+This prevents with-cache from being able to inspect the values produced by
+the thunk that is passed to it; if you want to specify a type for this thunk
+(in order, for instance, to allow typed use of the result of with-cache
+without a dynamic check) it's better simply to hard-code the type returned
+by the thunk that your program uses.
